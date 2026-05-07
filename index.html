@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPK-WIN | Home</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #071511; color: white; padding-bottom: 80px; direction: ltr; }
+        
+        /* Fixed Header */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #0f1c18; border-bottom: 1.5px solid #ff9900; position: sticky; top: 0; z-index: 1000; }
+        .user-info { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+        .logo-row { display: flex; align-items: center; gap: 4px; }
+        .logo-small { font-size: 16px; font-weight: 900; color: #ff9900; letter-spacing: 0.5px; text-shadow: 0 0 8px rgba(255,153,0,0.3); }
+        .welcome-text { font-size: 11px; color: #a4bfa3; font-weight: bold; }
+        #displayUser { color: #ff9900; font-weight: bold; font-size: 12px; margin-top: 2px; }
+        
+        /* Top Header Actions */
+        .top-actions { display: flex; align-items: center; gap: 6px; }
+        .balance-box { background: rgba(255, 153, 0, 0.1); padding: 5px 8px; border-radius: 6px; border: 1.5px solid #ff9900; font-weight: 800; font-size: 11px; color: #ff9900; white-space: nowrap; }
+        .top-btn { padding: 6px 8px; font-size: 10px; font-weight: 900; border-radius: 6px; border: none; cursor: pointer; text-transform: uppercase; }
+        .btn-dep { background: #ff9900; color: #000; transition: 0.2s; }
+        .btn-dep:active { background: #cc7a00; }
+        .btn-wit { background: #2f3e3a; color: #fff; border: 1px solid #444; }
+        .btn-head-hl { background: #25d366; color: white; font-size: 14px; padding: 4px 8px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 28px; }
+        
+        .page { display: none; padding: 12px; min-height: 100vh; box-sizing: border-box; }
+        .active-page { display: block; }
+        .btn-gold { width: 100%; padding: 14px; background: #ff9900; border: none; border-radius: 10px; font-weight: bold; color: black; cursor: pointer; margin: 10px 0; font-size: 15px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #1f332c; background: #0f1c18; color: white; box-sizing: border-box; }
+        
+        /* Banner Slider */
+        .slider-wrapper { position: relative; width: 100%; height: 165px; margin-top: 10px; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.6); display: block; }
+        .close-banner-btn { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; width: 25px; height: 25px; font-size: 12px; z-index: 100; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.3); }
+        .banner-slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.8s ease-in-out; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box; text-align: center; direction: rtl; }
+        .banner-slide.active { opacity: 1; z-index: 5; }
+
+        .slide-teal { background: linear-gradient(135deg, #0d342b 0%, #071714 100%); border: 1.5px solid #123e34; border-radius: 16px; }
+        .slide-purple { background: linear-gradient(135deg, #4f118c 0%, #29084d 100%); border: 1.5px solid #6317b0; border-radius: 16px; }
+        .slide-gold { background: linear-gradient(135deg, #ffb700 0%, #ff8800 100%); border: 1.5px solid #ffd000; border-radius: 16px; color: #000 !important; }
+        .slide-red-notice { background: linear-gradient(135deg, #cc0000 0%, #7a0000 100%); border: 1.5px solid #ff4444; border-radius: 16px; }
+
+        .slide-teal h2 { color: #ff9900; margin: 0 0 6px 0; font-size: 19px; font-weight: bold; }
+        .slide-teal p { color: #a4bfa3; margin: 0; font-size: 13px; line-height: 1.6; }
+        .slide-purple h2 { color: #ffd700; margin: 0 0 8px 0; font-size: 17px; font-weight: bold; }
+        .slide-purple .bonus-list { background: rgba(0,0,0,0.3); padding: 8px 15px; border-radius: 10px; font-size: 12px; font-weight: bold; line-height: 1.5; text-align: right; }
+        .slide-purple p { color: #e5ccff; margin: 6px 0 0 0; font-size: 11px; }
+        .slide-gold h2 { color: #000; margin: 0 0 6px 0; font-size: 18px; font-weight: 900; }
+        .slide-gold p { color: #111; margin: 0; font-size: 13px; font-weight: bold; line-height: 1.6; }
+        .slide-red-notice h2 { color: #fff; margin: 0 0 6px 0; font-size: 18px; font-weight: bold; }
+        .slide-red-notice p { color: #ffe6e6; margin: 0; font-size: 13px; line-height: 1.6; font-weight: bold; }
+
+        /* Filters */
+        .filter-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 14px 0; }
+        .filter-btn { background: #0d211c; border: 1.5px solid #122c25; color: #a4bfa3; padding: 8px 4px; border-radius: 8px; text-align: center; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .filter-btn.active { background: #ffda73; color: black; border-color: #ffda73; }
+
+        /* Game Grid Design */
+        .game-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; min-height: 150px; padding-bottom: 20px; }
+        .game-card { background: #040f0c; border-radius: 12px; overflow: hidden; aspect-ratio: 1 / 1.35; border: 1.5px solid #11382d; position: relative; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .game-card img { width: 100%; height: 78%; object-fit: cover; display: block; }
+        .card-footer { height: 22%; background: #072e23; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; text-align: center; padding: 0 2px; border-top: 1px solid #11382d; }
+        
+        .fav-star { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.6); color: white; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; z-index: 10; border: 1px solid rgba(255,255,255,0.2); }
+        .fav-star.active { color: #ff9900; }
+        .hot-badge { position: absolute; top: 6px; left: 6px; background: #e91e63; color: white; font-size: 8px; padding: 2px 5px; border-radius: 4px; font-weight: 900; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+
+        /* Bottom Nav */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #091714; display: flex; justify-content: space-around; padding: 10px 0; border-top: 2px solid #ff9900; z-index: 2000; box-shadow: 0 -4px 10px rgba(0,0,0,0.5); }
+        .nav-item { color: #7f9b94; text-align: center; text-decoration: none; font-size: 11px; cursor: pointer; flex: 1; transition: 0.2s; }
+        .nav-item.active { color: #ff9900; font-weight: bold; }
+        .nav-item span { display: block; font-size: 18px; margin-bottom: 2px; }
+        
+        .hist-item { background: #0f1c18; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #ff9900; font-size: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #163026; }
+
+        /* Helpline Buttons Design */
+        .helpline-box-wrapper { display: flex; gap: 10px; margin: 15px 0; justify-content: center; align-items: stretch; width: 100%; box-sizing: border-box; }
+        .hp-btn { flex: 1; display: flex; flex-direction: column; gap: 4px; text-decoration: none; }
+        .hp-email-anchor { background: #ea4335; color: white; text-decoration: none; padding: 10px; border-radius: 5px; font-size: 13px; text-align: center; font-weight: bold; display: block; }
+        .hp-copy-btn { background: #163026; color: #ff9900; border: 1px solid #ff9900; padding: 6px; cursor: pointer; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .hp-whatsapp-anchor { background: #25d366; color: white; text-decoration: none; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 14px; font-weight: bold; text-align: center; width: 100%; height: 100%; min-height: 48px; }
+
+        /* Profile Avatar CSS styling */
+        .avatar-container { position: relative; width: 85px; height: 85px; margin: 0 auto 10px auto; cursor: pointer; }
+        .profile-pic-main { width: 85px; height: 85px; border-radius: 50%; border: 3px solid #ff9900; object-fit: cover; box-shadow: 0 4px 10px rgba(255, 153, 0, 0.4); background: #071511; }
+        .edit-badge { position: absolute; bottom: 0; right: 0; background: #ff9900; color: #000; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; display: flex; align-items: center; justify-content: center; border: 2px solid #0f1c18; font-weight: bold; }
+        
+        .avatar-selector-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; background: rgba(0, 0, 0, 0.4); border: 1px solid #163026; padding: 12px; border-radius: 12px; margin-top: 10px; display: none; }
+        .avatar-option { width: 100%; aspect-ratio: 1/1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; object-fit: cover; transition: 0.2s; background: #071511; }
+        .avatar-option:hover, .avatar-option.selected { border-color: #ff9900; transform: scale(1.1); }
+
+        /* Invite List Styles */
+        .invite-item { background: #0f1c18; padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #163026; display: flex; justify-content: space-between; align-items: center; font-size: 12px; border-left: 4px solid #ff9900; }
+    </style>
+</head>
+<body>
+
+<div id="loginPage" class="page active-page">
+    <h1 style="color:#ff9900; text-align:center; margin-top:50px; font-size: 36px; font-weight: 900; letter-spacing: 1px;">KPK-WIN</h1>
+    <h3 style="text-align:center; color: #a4bfa3;">لاگ ان کریں</h3>
+    <input type="text" id="logUser" placeholder="Username">
+    <input type="password" id="logPass" placeholder="Password">
+    
+    <button class="btn-gold" onclick="login()">لاگ ان کریں</button>
+    
+    <p style="text-align:center; color:#ff4444; cursor: pointer; font-weight: bold; font-size: 13px; margin: 10px 0;" onclick="alert('پاس ورڈ بھول جانے کی صورت میں نیچے دیے گئے ہیلپ لائن بٹن (واٹس ایپ یا ای میل) پر فوری رابطہ کریں اور اپنا یوزر نیم بتائیں۔');">
+        🔑 Forget Password? (پاس ورڈ بھول گئے؟)
+    </p>
+
+    <p style="text-align:center; color:#ff9900; cursor: pointer; font-weight: bold; margin-bottom: 25px;" onclick="changePage('signupPage')">نیا اکاؤنٹ بنائیں</p>
+
+    <div style="background: rgba(255, 153, 0, 0.03); border: 1.5px solid #163026; border-radius: 12px; padding: 12px; margin: 15px 0; text-align: center;">
+        <span style="color: #ff9900; font-weight: bold; font-size: 13px; display: block; margin-bottom: 8px;">☎️ 24/7 CUSTOMER SUPPORT (ہیلپ لائن)</span>
+        <div class="helpline-box-wrapper" style="margin: 5px 0 0 0;">
+            <div class="hp-btn">
+                <a href="mailto:kpkwin.support.com@gmail.com" class="hp-email-anchor">Email Support</a>
+                <button onclick="navigator.clipboard.writeText('kpkwin.support.com@gmail.com'); alert('Email Copied');" class="hp-copy-btn">Copy Email</button>
+            </div>
+            <div style="flex: 1;">
+                <a href="https://wa.me/923499510040" target="_blank" class="hp-whatsapp-anchor">WhatsApp</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="signupPage" class="page">
+    <h1 style="color:#ff9900; text-align:center; margin-top:50px; font-size: 36px; font-weight: 900;">KPK-WIN</h1>
+    <h3 style="text-align:center; color: #a4bfa3;">نیا اکاؤنٹ رجسٹر کریں</h3>
+    <input type="text" id="regUser" placeholder="Username">
+    <input type="number" id="regPhone" placeholder="Mobile Number">
+    <input type="password" id="regPass" placeholder="Login Password">
+    <input type="password" id="regWitPass" placeholder="Withdraw Password (W-Pass)">
+    
+    <button class="btn-gold" onclick="registerUser()">رجسٹر کریں</button>
+    <button class="btn-gold" style="background:transparent; color:#ff9900; border:1.5px solid #ff9900;" onclick="changePage('loginPage')">Back</button>
+</div>
+
+<div id="homePage" class="page">
+    <header>
+        <div class="user-info">
+            <div class="logo-row">
+                <div class="logo-small">KPK-WIN</div>
+                <div class="welcome-text">| خوش آمدید</div>
+            </div>
+            <div id="displayUser">Guest</div>
+        </div>
+        <div class="top-actions">
+            <div class="balance-box">Rs <span id="userBal">0.00</span></div>
+            <button class="top-btn btn-dep" onclick="changePage('depositPage')">DEP</button>
+            <button class="top-btn btn-wit" onclick="changePage('withdrawPage')">WIT</button>
+            <button class="btn-head-hl" onclick="window.open('https://wa.me/923499510040', '_blank')" title="Helpline">🎧</button>
+        </div>
+    </header>
+
+    <div class="slider-wrapper" id="sliderBlock">
+        <button class="close-banner-btn" onclick="hideBannerSlider()">✖</button>
+        <div id="dynamicNoticesContainer" style="display: contents;"></div>
+
+        <div class="banner-slide slide-teal active">
+            <h2>تیز ترین ودڈرال سروس</h2>
+            <p>آپ کا ودڈرال اب صرف چند منٹوں میں آپ کے اکاؤنٹ میں!</p>
+        </div>
+        <div class="banner-slide slide-purple">
+            <h2>دوستوں کو انوائٹ کریں اور بونس پائیں!</h2>
+            <div class="bonus-list">
+                🤝 1 انوائٹ پر پائیں: <span style="color:#ffea00;">Rs.100</span><br>
+                🤝 2 انوائٹ پر پائیں: <span style="color:#ffea00;">Rs.200</span><br>
+                🤝 3 انوائٹ پر پائیں: <span style="color:#ffea00;">Rs.300</span>
+            </div>
+            <p>جتنے زیادہ دوست، اتنا زیادہ منافع</p>
+        </div>
+        <div class="banner-slide slide-gold">
+            <h2>کے پی کے ون میں خوش آمدید</h2>
+            <p>نئے ممبرز کے لیے پہلے ڈپازٹ پر 50% رقم بالکل مفت بونس!</p>
+        </div>
+    </div>
+
+    <div class="filter-container">
+        <div class="filter-btn active" onclick="filterGames('all', this)">All</div>
+        <div class="filter-btn" onclick="filterGames('recent', this)">Recent</div>
+        <div class="filter-btn" onclick="filterGames('fav', this)">Favorites</div>
+    </div>
+
+    <div id="gameGrid" class="game-grid"></div>
+</div>
+
+<div id="depositPage" class="page">
+    <h3 style="color:#ff9900;">Deposit Funds</h3>
+    <button class="btn-gold" style="background:transparent; color:#ff9900; border:1px solid #ff9900; padding:8px;" onclick="openHistory('deposits')">Deposit History</button>
+    
+    <select id="depMethod" onchange="updateDepView(this.value)">
+        <option value="">-- Select Bank --</option>
+        <option value="JazzCash (03499510040)">JazzCash (03499510040)</option>
+        <option value="Easypaisa (03405032202)">Easypaisa (03405032202)</option>
+        <option value="SadaPay (03405032202)">SadaPay (03405032202)</option>
+        <option value="NayaPay (03405032202)">NayaPay (03405032202)</option>
+        <option value="HBL / First Bank (03405032202)">HBL / First Bank (03405032202)</option>
+        <option value="Meezan Bank (07040103238191)">Meezan Bank (07040103238191)</option>
+        <option value="Zindgi Bank (03405032202)">Zindgi Bank (03405032202)</option>
+        <option value="UBL Bank (0059311913134)">UBL Bank (0059311913134)</option>
+    </select>
+
+    <div id="depForm" style="display:none; background:#0f1c18; padding:15px; border-radius:10px; border:1px solid #ff9900;">
+        <p id="depAccShow" style="color:#ff9900; font-weight:bold; text-align:center;"></p>
+        <p style="color:#fff; text-align: center; font-size: 14px;">Name: Yasir Khan</p>
+        <input type="number" id="depAmt" placeholder="Amount">
+        <input type="text" id="depTID" placeholder="Transaction ID (TID)">
+        <div style="margin: 10px 0; border: 1px dashed #555; padding: 10px; border-radius: 8px; text-align: center; position: relative; background: #040f0c;">
+            <input type="file" id="depScreenshot" accept="image/*" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer;" onchange="handleFileSelect(this)">
+            <div id="fileStat" style="color: #888; font-size: 13px;">📸 Upload Receipt Screenshot</div>
+        </div>
+        <button class="btn-gold" onclick="submitDeposit()">Submit Deposit</button>
+    </div>
+
+    <button class="btn-gold" style="background:#2f3e3a; color:white; margin-top:10px;" onclick="changePage('homePage')">Back</button>
+
+    <div class="helpline-box-wrapper">
+        <div class="hp-btn">
+            <a href="mailto:kpkwin.support.com@gmail.com" class="hp-email-anchor">Email Support</a>
+            <button onclick="navigator.clipboard.writeText('kpkwin.support.com@gmail.com'); alert('Email Copied');" class="hp-copy-btn">Copy Email</button>
+        </div>
+        <div style="flex: 1;">
+            <a href="https://wa.me/923499510040" target="_blank" class="hp-whatsapp-anchor">WhatsApp</a>
+        </div>
+    </div>
+
+    <div style="background: rgba(255, 153, 0, 0.05); padding: 15px; border-radius: 12px; border: 1px solid #ff9900; margin-top: 20px; color: #ffffff; text-align: center; direction: rtl;">
+        <div style="margin-bottom: 10px;"><span style="font-size: 24px;">📝</span><b style="font-size: 18px; color: #ff9900; text-decoration: underline;">رقم جمع کرنے کا طریقہ</b></div>
+        <p style="font-size: 14px; line-height: 1.8; margin-bottom: 10px; text-align: right; padding-right: 10px; color: #ccc;">
+            1. رقم جمع کرنے کے لیے سب سے پہلے اوپر <b>"-- Select Bank --"</b> پر کلک کریں۔ <br>
+            2. وہاں جو بینک، اکاؤنٹ نمبر اور نام (Yasir Khan) ظاہر ہو، اس پر رقم بھیجیں۔ <br>
+            3. رقم بھیجنے کے بعد نیچے دیے گئے خانے میں <b>TID</b> لکھیں۔ <br>
+            4. اس کے نیچے والے باکس میں اس پیمنٹ کے اسکرین شاٹ (Screenshot) کو اٹیچ کریں۔ <br>
+            5. آخر میں <b>Submit Deposit</b> کے بٹن پر کلک کریں۔
+        </p>
+        <div style="background: rgba(255, 153, 0, 0.1); padding: 15px; border-radius: 12px; border: 1px solid #ff9900; margin-top: 20px; color: #ffffff; text-align: center; direction: rtl;">
+            <b style="font-size: 18px; color: #ff9900; text-decoration: underline; display: block; margin-bottom: 10px;">⚠️ اہم نوٹ برائے ڈپازٹ</b>
+            <p style="font-size: 14px; margin-bottom: 10px; color: #eee;">آپ کا <strong>ڈیپوزٹ</strong> 1 منٹ سے لے کر 24 گھنٹے کے دوران آپ کے گیم اکاؤنٹ میں منتقل کر دیا جائے گا۔ براہ کرم انتظار کریں۔ اگر 24 گھنٹے گزرنے کے باوجود رقم آپ کے اکاؤنٹ میں موصول نہ ہو، تو فوری طور پر ہیلپ لائن سے رابطہ کریں۔</p>
+            <div style="background: rgba(255, 68, 68, 0.15); padding: 10px; border-radius: 8px; border: 1px dashed #ff4444; margin-bottom: 10px;">
+                <span style="color: #ff4444; font-weight: bold; font-size: 13px;">کمپنی کے نمبر کے علاوہ کسی غلط اکاؤنٹ پر رقم بھیجنے کی صورت میں کمپنی ذمہ دار نہیں ہوگی۔</span>
+            </div>
+            <p style="font-weight: bold; color: #ff9900;">شکریہ!</p>
+        </div>
+    </div>
+</div>
+
+<div id="withdrawPage" class="page">
+    <h3 style="color:#ff9900;">Withdraw Funds</h3>
+    
+    <div id="turnoverNotice" style="background: rgba(255, 153, 0, 0.1); border: 1.5px solid #ff9900; border-radius: 10px; padding: 10px; margin-bottom: 15px; text-align: center; font-size: 13px;">
+        🎮 گیم پلے ریکوائرمنٹ: <span style="color: #ff9900; font-weight: bold;">Rs <span id="turnoverLeft">0.00</span></span><br>
+        <span style="font-size: 11px; color: #aaa;">(ڈپازٹ کی گئی رقم پر 100% گیم کھیلنا لازمی ہے)</span>
+    </div>
+
+    <button class="btn-gold" style="background:transparent; color:#ff9900; border:1px solid #ff9900; padding:8px;" onclick="openHistory('withdrawals')">Withdraw History</button>
+    
+    <select id="witBank">
+        <option value="">-- Select Bank (30+) --</option>
+        <option>Easypaisa</option>
+        <option>JazzCash</option>
+        <option>SadaPay</option>
+        <option>NayaPay</option>
+        <option>Zindgi App</option>
+        <option>Meezan Bank</option>
+        <option>Habib Bank Limited (HBL)</option>
+        <option>United Bank Limited (UBL)</option>
+        <option>National Bank of Pakistan (NBP)</option>
+        <option>Allied Bank Limited (ABL)</option>
+        <option>Bank Alfalah</option>
+        <option>MCB Bank</option>
+        <option>Askari Bank</option>
+        <option>Faysal Bank</option>
+        <option>Bank Al Habib</option>
+        <option>Habib Metropolitan Bank</option>
+        <option>The Bank of Punjab (BOP)</option>
+        <option>The Bank of Khyber (BOK)</option>
+        <option>Mubasher Bank</option>
+        <option>Al Baraka Bank</option>
+        <option>BankIslami Pakistan</option>
+        <option>Dubai Islamic Bank</option>
+        <option>Standard Chartered Bank</option>
+        <option>Summit Bank</option>
+        <option>JS Bank</option>
+        <option>Soneri Bank</option>
+        <option>Sindh Bank</option>
+        <option>Silkbank</option>
+        <option>Samba Bank</option>
+        <option>Apna Microfinance Bank</option>
+        <option>Telenor Microfinance Bank</option>
+    </select>
+    <input type="number" id="witAmt" placeholder="Amount">
+    <input type="text" id="witName" placeholder="Account Name">
+    <input type="text" id="witAccNo" placeholder="Account Number">
+    <input type="password" id="confirmWitPass" placeholder="Withdraw Password (W-Pass)">
+    <button class="btn-gold" onclick="submitWithdraw()">Request Withdrawal</button>
+    <button class="btn-gold" style="background:#2f3e3a; color:white;" onclick="changePage('homePage')">Back</button>
+
+    <div class="helpline-box-wrapper">
+        <div class="hp-btn">
+            <a href="mailto:kpkwin.support.com@gmail.com" class="hp-email-anchor">Email Support</a>
+            <button onclick="navigator.clipboard.writeText('kpkwin.support.com@gmail.com'); alert('Email Copied');" class="hp-copy-btn">Copy Email</button>
+        </div>
+        <div style="flex: 1;">
+            <a href="https://wa.me/923499510040" target="_blank" class="hp-whatsapp-anchor">WhatsApp</a>
+        </div>
+    </div>
+
+    <div style="font-family: sans-serif; direction: rtl; text-align: center; color: white; margin-top: 20px;">
+        <div style="border: 1.5px solid #ff9900; border-radius: 15px; padding: 15px; background: rgba(0, 0, 0, 0.2); margin-bottom: 20px;">
+            <div style="margin-bottom: 15px;">
+                <b style="font-size: 18px; color: #ff9900; text-decoration: underline;">💰 ودڈرال حاصل کرنے کا طریقہ</b>
+            </div>
+            <p style="font-size: 14px; line-height: 2; text-align: right; margin: 0; padding-right: 10px; color: #ccc;">
+                1. اپنا بینک یا والٹ منتخب کریں۔ <br>
+                2. رقم (Amount) لکھیں۔ <br>
+                3. صحیح اکاؤنٹ نام اور نمبر درج کریں۔ <br>
+                4. اپنا <b>W-Pass</b> لکھیں تاکہ ٹرانزیکشن مکمل ہو۔ <br>
+                5. آخر میں Request پر کلک کریں۔
+            </p>
+        </div>
+        <div style="border: 1.5px solid #ff9900; border-radius: 15px; padding: 20px; background: rgba(0, 0, 0, 0.2);">
+            <div style="margin-bottom: 15px;">
+                <span style="font-size: 20px; color: #ff9900;">⚠️</span>
+                <b style="font-size: 18px; color: #ff9900; text-decoration: underline;">اہم نوٹ برائے ودڈرال</b>
+            </div>
+            <p style="font-size: 14px; line-height: 1.8; margin-bottom: 20px; color: #eee;">
+                آپ کا ودڈرال 1 منٹ سے لے کر 24 گھنٹے کے دوران آپ کے بینک اکاؤنٹ میں منتقل کر دیا جائے گا۔ براہ کرم انتظار کریں۔ اگر 24 گھنٹے گزرنے کے باوجود رقم آپ کے اکاؤنٹ میں موصول نہ ہو، تو فوری طور پر ہیلپ لائن سے رابطہ کریں۔
+            </p>
+            <div style="border: 1px dashed #ff4444; border-radius: 10px; padding: 12px; background: rgba(255, 68, 68, 0.05); margin-bottom: 15px;">
+                <span style="color: #ff4444; font-size: 13px; font-weight: bold;">
+                    "غلط اکاؤنٹ نمبر فراہم کرنے کی صورت میں کمپنی ذمہ دار نہیں ہوگی۔"
+                </span>
+            </div>
+            <div style="color: #ff9900; font-size: 18px; font-weight: bold;">
+                شکریہ!
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="historyPage" class="page">
+    <button class="btn-gold" style="background:#333; color:white; width:80px;" onclick="changePage('profilePage')">← Back</button>
+    <h2 id="histTitle" style="text-align:center; color:#ff9900;">HISTORY</h2>
+    <div id="histList"></div>
+</div>
+
+<div id="profilePage" class="page">
+    <h2 style="color:#ff9900; text-align:center;">User Profile</h2>
+    
+    <div style="background:#0f1c18; padding:15px; border-radius:15px; border:1px solid #163026; text-align:center; margin: 10px;">
+        <div class="avatar-container" onclick="toggleAvatarSelector()">
+            <img id="userProfilePic" class="profile-pic-main" src="https://api.dicebear.com/7.x/bottts/svg?seed=1" alt="Avatar">
+            <div class="edit-badge">✏️</div>
+        </div>
+        <p style="color: #ff9900; font-size: 11px; margin-top: -5px; margin-bottom: 10px; font-weight: bold;">تصویر تبدیل کرنے کے لیے کلک کریں</p>
+        
+        <div id="avatarSelector" class="avatar-selector-grid">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/bottts/svg?seed=1" onclick="selectAvatar('https://api.dicebear.com/7.x/bottts/svg?seed=1')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/bottts/svg?seed=2" onclick="selectAvatar('https://api.dicebear.com/7.x/bottts/svg?seed=2')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/bottts/svg?seed=3" onclick="selectAvatar('https://api.dicebear.com/7.x/bottts/svg?seed=3')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/pixel-art/svg?seed=John" onclick="selectAvatar('https://api.dicebear.com/7.x/pixel-art/svg?seed=John')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/pixel-art/svg?seed=Anya" onclick="selectAvatar('https://api.dicebear.com/7.x/pixel-art/svg?seed=Anya')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/pixel-art/svg?seed=Alex" onclick="selectAvatar('https://api.dicebear.com/7.x/pixel-art/svg?seed=Alex')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" onclick="selectAvatar('https://api.dicebear.com/7.x/avataaars/svg?seed=Felix')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" onclick="selectAvatar('https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jack" onclick="selectAvatar('https://api.dicebear.com/7.x/avataaars/svg?seed=Jack')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/adventurer/svg?seed=Spooky" onclick="selectAvatar('https://api.dicebear.com/7.x/adventurer/svg?seed=Spooky')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/adventurer/svg?seed=Shadow" onclick="selectAvatar('https://api.dicebear.com/7.x/adventurer/svg?seed=Shadow')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/adventurer/svg?seed=Buster" onclick="selectAvatar('https://api.dicebear.com/7.x/adventurer/svg?seed=Buster')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/lorelei/svg?seed=Precious" onclick="selectAvatar('https://api.dicebear.com/7.x/lorelei/svg?seed=Precious')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/lorelei/svg?seed=Sassy" onclick="selectAvatar('https://api.dicebear.com/7.x/lorelei/svg?seed=Sassy')">
+            <img class="avatar-option" src="https://api.dicebear.com/7.x/lorelei/svg?seed=Angel" onclick="selectAvatar('https://api.dicebear.com/7.x/lorelei/svg?seed=Angel')">
+        </div>
+
+        <h3 id="profName" style="color: white; margin-top: 15px;">Username</h3>
+        <p id="profPhone" style="color:#888;">03xx-xxxxxxx</p>
+        <p>Balance: <span id="profBal" style="color:#ff9900; font-weight:bold;">0.00</span></p>
+    </div>
+
+    <div style="padding: 10px;">
+        <button class="btn-gold" style="background:#ff9900; color:black; font-weight: 800;" onclick="openHistory('invites')">🔗 Invite Friends History (ریفرل ریکارڈ)</button>
+        <button class="btn-gold" style="background:#222; border: 1px solid #333; color: #fff;" onclick="changeLoginPass()">Change Login Password</button>
+        <button class="btn-gold" style="background:#222; border: 1px solid #333; color: #fff;" onclick="changeWithdrawPass()">Set/Change W-Pass</button>
+        <button class="btn-gold" style="background:#00c4ef; color:black;" onclick="copyInviteLink()">🔗 Copy Invitation Link</button>
+    </div>
+
+    <div style="background: rgba(255, 153, 0, 0.03); border: 1.5px solid #163026; border-radius: 12px; padding: 12px; margin: 15px 10px; text-align: center;">
+        <span style="color: #ff9900; font-weight: bold; font-size: 14px; display: block; margin-bottom: 8px;">☎️ 24/7 CUSTOMER SUPPORT</span>
+        <div class="helpline-box-wrapper" style="margin: 5px 0 0 0;">
+            <div class="hp-btn">
+                <a href="mailto:kpkwin.support.com@gmail.com" class="hp-email-anchor">Email Support</a>
+                <button onclick="navigator.clipboard.writeText('kpkwin.support.com@gmail.com'); alert('Email Copied');" class="hp-copy-btn">Copy Email</button>
+            </div>
+            <div style="flex: 1;">
+                <a href="https://wa.me/923499510040" target="_blank" class="hp-whatsapp-anchor">WhatsApp</a>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-gold" style="background:#ff4444; color:white; margin: 20px 0;" onclick="logout()">Logout</button>
+</div>
+
+<div class="bottom-nav" id="mainNav" style="display: none;">
+    <div class="nav-item active" onclick="showHome()"><span>🏠</span>Home</div>
+    <div class="nav-item" onclick="showProfile()"><span>👤</span>Profile</div>
+    <div class="nav-item" onclick="logout()"><span>🔄</span>Logout</div>
+</div>
+
+<script>
+const firebaseConfig = { apiKey: "AIzaSyCYzGgpU8OBX2rQXkqVrafgtfMK896zJtA", databaseURL: "https://kpk-win-default-rtdb.firebaseio.com", projectId: "kpk-win" };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentUserId = sessionStorage.getItem("currentUserId") || "";
+let currentUsername = sessionStorage.getItem("currentUsername") || "";
+let base64Image = "", currentFilter = 'all';
+let favorites = JSON.parse(localStorage.getItem('favGames') || '[]');
+
+const urlParams = new URLSearchParams(window.location.search);
+const referrerId = urlParams.get('ref');
+
+let slideIndex = 0;
+function autoSlide() {
+    const slides = Array.from(document.querySelectorAll('.banner-slide')).filter(slide => slide.style.display !== 'none');
+    if(slides.length === 0) return;
+    
+    slides.forEach(slide => slide.classList.remove('active'));
+    slideIndex++;
+    if (slideIndex >= slides.length) { slideIndex = 0; }
+    slides[slideIndex].classList.add('active');
+}
+let slideInterval = setInterval(autoSlide, 4000);
+
+function hideBannerSlider() {
+    document.getElementById('sliderBlock').style.display = 'none';
+}
+
+window.onload = function() {
+    // ---- AUTO LOGIN FEATURE START ----
+    const savedUser = localStorage.getItem("kpkWinUser");
+    const savedPass = localStorage.getItem("kpkWinPass");
+
+    if (!currentUserId && savedUser && savedPass) {
+        db.ref('users').orderByChild('username').equalTo(savedUser).once('value', snap => {
+            if (snap.exists()) {
+                snap.forEach(c => {
+                    if (c.val().password === savedPass) {
+                        performLogin(c.key, savedUser, c.val());
+                    }
+                });
+            }
+        });
+    } else if (currentUserId && currentUsername) {
+        setupUIAfterLogin(currentUsername);
+    } else {
+        document.getElementById('mainNav').style.display = 'none';
+        changePage('loginPage');
+    }
+    // ---- AUTO LOGIN FEATURE END ----
+}
+
+function setupUIAfterLogin(user) {
+    document.getElementById('displayUser').innerText = user;
+    document.getElementById('profName').innerText = user;
+    document.getElementById('mainNav').style.display = 'flex';
+    syncData();
+    changePage('homePage');
+}
+
+function performLogin(uid, user, data) {
+    currentUserId = uid;
+    currentUsername = user;
+    sessionStorage.setItem("currentUserId", uid);
+    sessionStorage.setItem("currentUsername", user);
+    localStorage.setItem("kpkWinUser", user);
+    localStorage.setItem("kpkWinPass", data.password);
+    
+    document.getElementById('profPhone').innerText = data.phone || "No Number";
+    if (data.avatar) {
+        document.getElementById('userProfilePic').src = data.avatar;
+    }
+    setupUIAfterLogin(user);
+}
+
+function changePage(id) {
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    document.getElementById(id).style.display = 'block';
+}
+
+function toggleAvatarSelector() {
+    const selector = document.getElementById('avatarSelector');
+    selector.style.display = (selector.style.display === "grid") ? "none" : "grid";
+}
+
+function selectAvatar(url) {
+    if (!currentUserId) return;
+    
+    db.ref('users/' + currentUserId + '/avatar').set(url).then(() => {
+        document.getElementById('userProfilePic').src = url;
+        document.getElementById('avatarSelector').style.display = "none";
+    }).catch(err => {
+        alert("Avatar select error: " + err.message);
+    });
+}
+
+// Login
+function login() {
+    const user = document.getElementById('logUser').value.trim();
+    const pass = document.getElementById('logPass').value;
+    if(!user || !pass) return alert("Details enter karein!");
+    
+    db.ref('users').orderByChild('username').equalTo(user).once('value', snap => {
+        if(snap.exists()){
+            let passFound = false;
+            snap.forEach(c => {
+                if(c.val().password === pass){
+                    passFound = true;
+                    performLogin(c.key, user, c.val());
+                    alert("لاگ ان کامیاب رہا!");
+                }
+            });
+            if(!passFound) alert("Ghalat Password!");
+        } else { 
+            alert("User nahi mila!"); 
+        }
+    }).catch(err => {
+        alert("Database connection issue: " + err.message);
+    });
+}
+
+// Signup
+function registerUser() {
+    const u = document.getElementById('regUser').value.trim();
+    const ph = document.getElementById('regPhone').value.trim();
+    const p = document.getElementById('regPass').value;
+    const wp = document.getElementById('regWitPass').value.trim();
+
+    if(!u || !ph || !p || !wp) {
+        alert("Sari fields fill karein اور اپنا Withdraw Password (W-Pass) لازمی لکھیں!");
+        return;
+    }
+
+    db.ref('users').orderByChild('username').equalTo(u).once('value', snap => {
+        if(snap.exists()) {
+            alert("Ye Username pehle se registered hai! Koi doosra username rakhein.");
+        } else {
+            const newUserRef = db.ref('users').push();
+            const payload = {
+                username: u,
+                phone: ph,
+                password: p,
+                withdrawPass: wp,
+                balance: 0.00,
+                requiredTurnover: 0.00,
+                status: "active",
+                avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=1"
+            };
+
+            if(referrerId) { payload.referredBy = referrerId; }
+
+            newUserRef.set(payload).then(() => {
+                if(referrerId) {
+                    db.ref('users/' + referrerId + '/invites/' + newUserRef.key).set({
+                        username: u,
+                        bonusReceived: 0,
+                        status: "Registered"
+                    });
+                }
+                alert("Account register ہو گیا ہے! اب لاگ ان کریں۔");
+                changePage('loginPage');
+            }).catch(err => {
+                alert("Registration failed: " + err.message);
+            });
+        }
+    });
+}
+
+function logout() {
+    localStorage.removeItem("kpkWinUser");
+    localStorage.removeItem("kpkWinPass");
+    sessionStorage.clear();
+    location.reload();
+}
+
+function syncData() {
+    if(!currentUserId) return;
+    
+    db.ref('users/' + currentUserId + '/balance').on('value', s => {
+        let bal = parseFloat(s.val() || 0).toFixed(2);
+        document.getElementById('userBal').innerText = bal;
+        document.getElementById('profBal').innerText = bal;
+    });
+
+    db.ref('users/' + currentUserId + '/requiredTurnover').on('value', s => {
+        let req = parseFloat(s.val() || 0).toFixed(2);
+        document.getElementById('turnoverLeft').innerText = req;
+    });
+
+    db.ref('users/' + currentUserId + '/avatar').on('value', s => {
+        if(s.exists()) {
+            document.getElementById('userProfilePic').src = s.val();
+        }
+    });
+
+    db.ref('settings/appNotices').on('value', snap => {
+        const dynamicContainer = document.getElementById('dynamicNoticesContainer');
+        dynamicContainer.innerHTML = ""; 
+        if(snap.exists()) {
+            snap.forEach(child => {
+                const text = child.val();
+                dynamicContainer.innerHTML += '<div class="banner-slide slide-red-notice"><h2>📢 اہم ترین نوٹس</h2><p>' + text + '</p></div>';
+            });
+        }
+        clearInterval(slideInterval);
+        slideIndex = 0;
+        slideInterval = setInterval(autoSlide, 4000);
+    });
+    drawGrid();
+}
+
+function filterGames(type, btn) {
+    currentFilter = type;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawGrid();
+}
+
+function toggleFavorite(gameId, event) {
+    event.stopPropagation();
+    if(favorites.includes(gameId)) favorites = favorites.filter(id => id !== gameId);
+    else favorites.push(gameId);
+    localStorage.setItem('favGames', JSON.stringify(favorites));
+    drawGrid();
+}
+
+function drawGrid() {
+    const staticGames = []; 
+    db.ref('onlineGames').once('value', snap => {
+        let gamesList = [...staticGames];
+        snap.forEach(child => {
+            const val = child.val();
+            gamesList.push({ id: child.key, name: val.name, prov: val.prov || 'Online', img: val.img, link: val.link || '#', category: 'all' });
+        });
+        let filtered = gamesList.filter(g => {
+            if(currentFilter === 'fav') return favorites.includes(g.id);
+            return true;
+        });
+        let html = "";
+        filtered.forEach(g => {
+            const isFav = favorites.includes(g.id) ? 'active' : '';
+            html += '<div class="game-card" onclick="window.location.href=\'' + g.link + '\'">' +
+                        '<div class="fav-star ' + isFav + '" onclick="toggleFavorite(\'' + g.id + '\', event)">★</div>' +
+                        '<img src="' + g.img + '" alt="' + g.name + '" onerror="this.onerror=null; this.src=\'https://via.placeholder.com/150/11382d/ff9900?text=' + g.name + '\'">' +
+                        '<div class="card-footer">' + g.name + ' (' + g.prov + ')</div>' +
+                    '</div>';
+        });
+        document.getElementById('gameGrid').innerHTML = html || "<p style='grid-column: span 3; text-align:center; color:#555;'>No Games Found</p>";
+    });
+}
+
+function showHome() {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.querySelector('.bottom-nav div:nth-child(1)').classList.add('active');
+    changePage('homePage');
+}
+
+function showProfile() {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.querySelector('.bottom-nav div:nth-child(2)').classList.add('active');
+    changePage('profilePage');
+}
+
+function updateDepView(val) {
+    const form = document.getElementById('depForm');
+    const show = document.getElementById('depAccShow');
+    if(!val) { form.style.display = "none"; return; }
+    show.innerText = "Send money to: " + val;
+    form.style.display = "block";
+}
+
+function handleFileSelect(input) {
+    const file = input.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            base64Image = e.target.result;
+            document.getElementById('fileStat').innerText = "✅ Screenshot Loaded";
+            document.getElementById('fileStat').style.color = "#ff9900";
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function submitDeposit() {
+    const method = document.getElementById('depMethod').value;
+    const amt = parseFloat(document.getElementById('depAmt').value);
+    const tid = document.getElementById('depTID').value.trim();
+    if(!method || isNaN(amt) || amt <= 0 || !tid || !base64Image) { alert("Sari fields verify karein!"); return; }
+
+    db.ref('deposits').push({ uid: currentUserId, username: currentUsername, method: method, amount: amt, tid: tid, screenshot: base64Image, status: 'pending' }).then(() => {
+        db.ref('users/' + currentUserId + '/requiredTurnover').transaction(current => (current || 0) + amt);
+        alert("Deposit request submit ho gayi!");
+        changePage('homePage');
+    });
+}
+
+function submitWithdraw() {
+    const bank = document.getElementById('witBank').value;
+    const amt = parseFloat(document.getElementById('witAmt').value);
+    const name = document.getElementById('witName').value.trim();
+    const acc = document.getElementById('witAccNo').value.trim();
+    const pass = document.getElementById('confirmWitPass').value;
+
+    if(!bank || isNaN(amt) || amt <= 0 || !name || !acc || !pass) { alert("Sari fields fill karein!"); return; }
+
+    db.ref('users/' + currentUserId).once('value', snap => {
+        const user = snap.val();
+        if(user.withdrawPass !== pass) { alert("Ghalat Withdraw Password!"); return; }
+        if(user.balance < amt) { alert("Inward Balance!"); return; }
+        if(parseFloat(user.requiredTurnover || 0) > 0) { alert("Game Play Requirement not met!"); return; }
+
+        db.ref('users/' + currentUserId + '/balance').transaction(current => (current || 0) - amt).then(() => {
+            db.ref('withdrawals').push({ uid: currentUserId, username: currentUsername, bankName: bank, amount: amt, accountName: name, accountNumber: acc, status: 'pending' }).then(() => {
+                alert("Withdrawal request lag gayi!");
+                changePage('homePage');
+            });
+        });
+    });
+}
+
+function openHistory(type) {
+    const list = document.getElementById('histList');
+    list.innerHTML = "Loading...";
+    document.getElementById('histTitle').innerText = type.toUpperCase() + " HISTORY";
+    changePage('historyPage');
+
+    if(type === 'invites') {
+        db.ref('users/' + currentUserId + '/invites').once('value', snap => {
+            let html = "";
+            snap.forEach(child => {
+                const inv = child.val();
+                html += '<div class="invite-item"><div>👤 <b>' + inv.username + '</b><br>Status: ' + (inv.status || 'Registered') + '</div><div>Rs ' + (inv.bonusReceived || 0) + '</div></div>';
+            });
+            list.innerHTML = html || "<p>No record found.</p>";
+        });
+    } else {
+        db.ref(type).orderByChild('uid').equalTo(currentUserId).once('value', snap => {
+            let html = "";
+            snap.forEach(child => {
+                const v = child.val();
+                html += '<div class="hist-item"><div><b>' + (v.method || v.bankName) + '</b></div><div>Rs ' + v.amount + ' (' + v.status + ')</div></div>';
+            });
+            list.innerHTML = html || "<p>No record found.</p>";
+        });
+    }
+}
+
+function changeLoginPass() {
+    const oldP = prompt("Purana Password:");
+    db.ref('users/' + currentUserId + '/password').once('value', s => {
+        if(s.val() === oldP) {
+            const newP = prompt("Naya Password:");
+            if(newP) db.ref('users/' + currentUserId + '/password').set(newP).then(() => {
+                localStorage.setItem("kpkWinPass", newP);
+                alert("Updated!");
+            });
+        } else alert("Wrong!");
+    });
+}
+
+function changeWithdrawPass() {
+    const oldP = prompt("Purana W-Pass:");
+    db.ref('users/' + currentUserId + '/withdrawPass').once('value', s => {
+        if(s.val() === oldP) {
+            const newP = prompt("Naya W-Pass:");
+            if(newP) db.ref('users/' + currentUserId + '/withdrawPass').set(newP).then(() => alert("Updated!"));
+        } else alert("Wrong!");
+    });
+}
+
+function copyInviteLink() {
+    const link = window.location.origin + window.location.pathname + "?ref=" + currentUserId;
+    navigator.clipboard.writeText(link).then(() => alert("Referral Link copied!"));
+}
+</script>
+</body>
+</html>
