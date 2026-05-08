@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KPK-WIN | Tower Blast</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        /* --- CORE CSS --- */
+        body { margin: 0; background: #071511; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; overflow: hidden; height: 100vh; }
+        
+        header { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #0f1c18; border-bottom: 2px solid #ff9900; box-sizing: border-box; flex-shrink: 0; }
+        .balance-box { color: #ff9900; font-weight: 900; border: 1.5px solid #ff9900; padding: 4px 10px; border-radius: 6px; font-size: 13px; }
+        .back-btn { background: #163026; color: #ff9900; border: 1px solid #ff9900; padding: 4px 12px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 12px; }
+
+        .game-area-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; flex-grow: 1; overflow: hidden; }
+
+        .mode-selector { display: flex; gap: 4px; width: 92%; flex-shrink: 0; padding: 5px 0; }
+        .mode-btn { flex: 1; padding: 6px; border: 1px solid #244d3d; background: #0f1c18; color: #7f9b94; cursor: pointer; border-radius: 5px; font-size: 10px; font-weight: bold; }
+        .mode-btn.active { border-color: #ff9900; color: #ff9900; background: rgba(255,153,0,0.1); }
+
+        .target-text { color:#ff9900; font-weight:bold; font-size: 12px; margin: 3px 0; flex-shrink: 0; }
+
+        /* FIXED SCROLL AREA */
+        .scroll-container { 
+            width: 100%; 
+            flex: 1; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column-reverse; 
+            align-items: center; 
+            padding: 10px 0; 
+            scroll-behavior: smooth;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .game-container { width: 92%; max-width: 350px; display: flex; flex-direction: column-reverse; gap: 4px; }
+        .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; opacity: 0.3; pointer-events: none; padding: 2px 0; }
+        .row.active { opacity: 1; pointer-events: auto; }
+        
+        .cell { height: 32px; background: #163026; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1px solid #244d3d; transition: 0.2s; position: relative; }
+        .cell.clicked { background: #ff9900; color: black; font-weight: bold; }
+        .cell.bomb { background: #e74c3c; }
+        .lvl-num { position: absolute; left: 5px; font-size: 8px; opacity: 0.3; color: white; }
+
+        /* CONTROLS AREA: Isko upar move kiya gaya hai */
+        .controls { 
+            width: 94%; 
+            max-width: 380px; 
+            background: #0f1c18; 
+            padding: 12px; 
+            border-radius: 12px; 
+            border: 1px solid #163026; 
+            box-sizing: border-box; 
+            flex-shrink: 0; 
+            margin-bottom: 35px; /* Screenshot ke mutabiq upar kiya gaya hai */
+            margin-top: 5px; 
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .main-btn { width: 100%; padding: 14px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 8px; font-size: 15px; }
+        .bet-input-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+        .adjust-btn { flex: 1; padding: 10px; background: #163026; color: #ff9900; border: 1px solid #ff9900; border-radius: 5px; font-weight: bold; font-size: 18px; }
+        input[type=number] { flex: 3; padding: 10px; background: #071511; border: 1px solid #163026; color: #ff9900; border-radius: 5px; text-align: center; font-weight: bold; outline: none; font-size: 18px; }
+        
+        .quick-bet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .q-btn { padding: 10px 2px; background: #0f1c18; border: 1px solid #244d3d; color: #a4bfa3; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<header>
+    <button class="back-btn" onclick="location.href='index.html'">BACK</button>
+    <div class="balance-box">Rs <span id="userBal">0.00</span></div>
+</header>
+
+<div class="game-area-wrapper">
+    <div class="mode-selector">
+        <button class="mode-btn active" id="btn-easy" onclick="setMode('easy')">EASY</button>
+        <button class="mode-btn" id="btn-normal" onclick="setMode('normal')">NORMAL</button>
+        <button class="mode-btn" id="btn-strong" onclick="setMode('strong')">STRONG</button>
+    </div>
+
+    <div id="displayMult" class="target-text">TARGET: 1.00x</div>
+    
+    <div class="scroll-container" id="scrollBox">
+        <div class="game-container" id="board"></div>
+    </div>
+
+    <div class="controls">
+        <div class="bet-input-row">
+            <button class="adjust-btn" onclick="adjustBet(-10)">-</button>
+            <input type="number" id="betAmount" value="50">
+            <button class="adjust-btn" onclick="adjustBet(10)">+</button>
+        </div>
+
+        <div class="quick-bet-grid">
+            <button class="q-btn" onclick="setBet(10)">10</button>
+            <button class="q-btn" onclick="setBet(30)">30</button>
+            <button class="q-btn" onclick="setBet(60)">60</button>
+            <button class="q-btn" onclick="setBet(500)">500</button>
+            <button class="q-btn" onclick="setBet(1000)">1000</button>
+            <button class="q-btn" onclick="setBet(3000)">3000</button>
+            <button class="q-btn" onclick="setBet(5000)">5000</button>
+            <button class="q-btn" style="color:#e74c3c; border-color:#e74c3c;" onclick="setBet('max')">MAX</button>
+        </div>
+
+        <button id="startBtn" class="main-btn" style="background:#ff9900; color:black;" onclick="startGame()">Start Game</button>
+        <button id="cashBtn" class="main-btn" style="background:#2ecc71; color:white; display:none;" onclick="cashout()">Cash Out</button>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCYzGgpU8OBX2rQXkqVrafgtfMK896zJtA",
+        databaseURL: "https://kpk-win-default-rtdb.firebaseio.com",
+        projectId: "kpk-win"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentUser = sessionStorage.getItem('currentUserId') || localStorage.getItem('activeUser');
+    let userBalance = 0;
+    let currentLvl = 0;
+    let currentMode = 'easy';
+    const totalRows = 30;
+
+    const modes = {
+        easy: { start: 1.0, step: 0.4, bombChance: 0.40 },
+        normal: { start: 1.5, step: 1.1, bombChance: 0.60 },
+        strong: { start: 2.0, step: 2.2, bombChance: 0.88 } 
+    };
+
+    function getMult(lvl) {
+        let m = modes[currentMode];
+        return (m.start + (lvl * m.step)).toFixed(2);
+    }
+
+    if(currentUser) {
+        db.ref('users/' + currentUser + '/balance').on('value', snap => {
+            userBalance = parseFloat(snap.val() || 0);
+            document.getElementById('userBal').innerText = userBalance.toLocaleString('en-IN', {minimumFractionDigits: 2});
+        });
+    }
+
+    function adjustBet(val) {
+        let b = parseFloat(document.getElementById('betAmount').value) || 0;
+        let res = Math.max(10, Math.min(5000, b + val));
+        document.getElementById('betAmount').value = res;
+    }
+
+    function setBet(amt) {
+        if(amt === 'max') {
+            document.getElementById('betAmount').value = userBalance > 5000 ? 5000 : Math.floor(userBalance);
+        } else {
+            document.getElementById('betAmount').value = amt;
+        }
+    }
+
+    function setMode(m) {
+        currentMode = m;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + m).classList.add('active');
+        document.getElementById('displayMult').innerText = "TARGET: " + getMult(0) + "x";
+    }
+
+    const board = document.getElementById('board');
+    for (let i = 0; i < totalRows; i++) {
+        let row = document.createElement('div');
+        row.className = 'row'; row.id = 'r-' + i;
+        for (let j = 0; j < 3; j++) {
+            let cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.innerHTML = `<span class="lvl-num">${i+1}</span>`;
+            cell.onclick = () => step(i, j);
+            row.appendChild(cell);
+        }
+        board.appendChild(row);
+    }
+
+    function startGame() {
+        let bet = parseFloat(document.getElementById('betAmount').value);
+        if (userBalance < bet || bet < 10) { alert("Balance check karein!"); return; }
+
+        db.ref('users/' + currentUser + '/balance').transaction(b => b - bet);
+        currentLvl = 0;
+        document.querySelectorAll('.cell').forEach(c => { 
+            c.classList.remove('clicked', 'bomb');
+            let span = c.querySelector('.lvl-num');
+            c.innerText = '';
+            if(span) c.appendChild(span);
+        });
+        document.getElementById('startBtn').style.display = 'none';
+        activate(0);
+    }
+
+    function activate(l) {
+        document.querySelectorAll('.row').forEach(r => r.classList.remove('active'));
+        if (l < totalRows) {
+            let activeRow = document.getElementById('r-' + l);
+            activeRow.classList.add('active');
+            document.getElementById('displayMult').innerText = "Next: " + getMult(l) + "x";
+            activeRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function step(r, c) {
+        if (r !== currentLvl) return;
+        let isBomb = Math.random() < modes[currentMode].bombChance;
+        let cells = document.getElementById('r-' + r).children;
+
+        if (isBomb) {
+            cells[c].classList.add('bomb'); cells[c].innerText = '💣';
+            setTimeout(() => { alert("Bomb Blast!"); reset(); }, 200);
+        } else {
+            cells[c].classList.add('clicked'); cells[c].innerText = '⭐';
+            currentLvl++;
+            document.getElementById('cashBtn').style.display = 'block';
+            let pot = document.getElementById('betAmount').value * getMult(r);
+            document.getElementById('cashBtn').innerText = "CASH OUT (Rs " + pot.toFixed(2) + ")";
+            if (currentLvl === totalRows) cashout();
+            else activate(currentLvl);
+        }
+    }
+
+    function cashout() {
+        let win = document.getElementById('betAmount').value * getMult(currentLvl - 1);
+        db.ref('users/' + currentUser + '/balance').transaction(b => (b || 0) + win);
+        alert("Winner! Rs " + win.toFixed(2));
+        reset();
+    }
+
+    function reset() {
+        document.getElementById('startBtn').style.display = 'block';
+        document.getElementById('cashBtn').style.display = 'none';
+        document.querySelectorAll('.row').forEach(r => r.classList.remove('active'));
+        document.getElementById('scrollBox').scrollTo({top: document.getElementById('scrollBox').scrollHeight, behavior: 'smooth'});
+    }
+</script>
+</body>
+</html>
