@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPK-WIN | Support</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { margin: 0; font-family: sans-serif; background: #071511; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #0f1c18; border-bottom: 2.5px solid #ff9900; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .header-title { color: #ff9900; font-weight: 900; font-size: 18px; letter-spacing: 1px; }
+        #chatBox { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: linear-gradient(to bottom, #071511, #040f0c); }
+        .msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .admin-msg { align-self: flex-start; background: #163026; color: #fff; border-bottom-left-radius: 2px; border: 1px solid #11382d; }
+        .user-msg { align-self: flex-end; background: #ff9900; color: #000; border-bottom-right-radius: 2px; font-weight: 600; }
+        .time { font-size: 9px; display: block; margin-top: 5px; opacity: 0.6; text-align: right; }
+        .input-area { background: #0f1c18; padding: 15px; display: flex; gap: 10px; padding-bottom: 30px; border-top: 1px solid #163026; }
+        input { flex: 1; background: #071511; border: 1px solid #1f332c; border-radius: 25px; padding: 12px 18px; color: white; outline: none; }
+        button { background: #ff9900; border: none; width: 48px; height: 48px; border-radius: 50%; color: black; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div onclick="history.back()" style="color:#ff9900; cursor:pointer; font-size: 22px; font-weight: bold;">❮</div>
+    <div class="header-title">KPK-WIN SUPPORT</div>
+    <div style="color:#25d366; font-size:11px; font-weight:bold;"><span style="font-size:14px;">●</span> Online</div>
+</header>
+
+<div id="chatBox">
+    <div class="msg admin-msg">
+        Assalam-o-Alaikum! KPK-WIN Support mein khush-amdeed. Hum aapki kya madad kar sakte hain?
+        <span class="time">System</span>
+    </div>
+</div>
+
+<div class="input-area">
+    <input type="text" id="userInput" placeholder="Apna masla likhein..." autocomplete="off">
+    <button id="sendBtn">➤</button>
+</div>
+
+<script>
+    // Config picked from your Login Page
+    const firebaseConfig = {
+        apiKey: "AIzaSy...", // Aapka login wala API key
+        databaseURL: "https://kpk-win-default-rtdb.firebaseio.com/", 
+        projectId: "kpk-win",
+        appId: "1:xxxx:web:xxxx"
+    };
+
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.database();
+
+    // Identify user by Username
+    const username = localStorage.getItem("loggedInUser") || "Guest_" + Math.floor(Math.random() * 999);
+    const chatBox = document.getElementById('chatBox');
+    const input = document.getElementById('userInput');
+    let autoReplySent = false;
+
+    function addMsg(text, cls, timeLabel) {
+        const div = document.createElement('div');
+        div.className = 'msg ' + cls;
+        div.innerHTML = `${text} <span class="time">${timeLabel}</span>`;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    document.getElementById('sendBtn').onclick = async function() {
+        const text = input.value.trim();
+        if (text === "") return;
+
+        const now = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        addMsg(text, 'user-msg', now);
+        input.value = "";
+
+        // 1. Instant Auto Reply
+        if (!autoReplySent) {
+            setTimeout(() => {
+                addMsg("آپ کا شکریہ! براہ کرم تھوڑا انتظار کریں، ہم آپ کو جلد ہی ایک ایجنٹ سے کنیکٹ کر رہے ہیں۔", 'admin-msg', 'Auto-Reply');
+            }, 800);
+            autoReplySent = true;
+        }
+
+        // 2. Database Sync
+        await db.ref("SupportMessages/" + username).push({
+            sender: username,
+            message: text,
+            time: now
+        });
+    };
+
+    // 3. Listen for Admin Replies
+    db.ref("SupportReplies/" + username).on("child_added", (snap) => {
+        const data = snap.val();
+        if(data.sender === "Admin") {
+            addMsg(data.message, 'admin-msg', 'Agent');
+        }
+    });
+</script>
+</body>
+</html>
