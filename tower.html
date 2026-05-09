@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KPK-WIN | Tower Blast</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { 
+            margin: 0; background: #1a1b1e; color: white; 
+            font-family: 'Inter', sans-serif; display: flex; 
+            flex-direction: column; height: 100vh; overflow: hidden; 
+        }
+        
+        /* --- LOADING PAGE --- */
+        #loadingPage {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: radial-gradient(circle, #1e3a8a 0%, #1a1b1e 100%); 
+            z-index: 9999; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; text-align: center;
+            transition: opacity 0.5s ease;
+        }
+        .load-logo-yr { margin: 0; font-size: 50px; color: #ffffff; letter-spacing: 6px; font-weight: 900; }
+        .load-logo-kpk { margin: 0; font-size: 20px; color: #ffcc00; font-weight: 900; letter-spacing: 2px; }
+        .load-bar-container { width: 70%; max-width: 250px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-top: 30px; }
+        #loadProgress { width: 0%; height: 100%; background: #ffffff; box-shadow: 0 0 10px #ffffff; }
+
+        /* --- HEADER & STATS --- */
+        header { 
+            width: 100%; padding: 12px 10px; background: #1a1b1e; 
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #2d2f34; box-sizing: border-box;
+        }
+        .brand-title { font-weight: 900; font-size: 18px; color: #ffffff; }
+        .brand-title span { color: #ffcc00; }
+        .balance-display { background: #2d2f34; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 13px; color: #ffffff; }
+
+        .game-area-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; align-items: center; }
+        .top-stats { width: 92%; display: flex; justify-content: space-between; margin: 10px 0; }
+        .stat-box { background: #2d2f34; padding: 4px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+
+        /* --- GRID AREA --- */
+        .scroll-container { width: 100%; flex: 1; overflow-y: auto; display: flex; flex-direction: column-reverse; align-items: center; padding-bottom: 10px; }
+        .game-container { width: 92%; max-width: 360px; display: flex; flex-direction: column-reverse; gap: 8px; }
+        .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; opacity: 0.3; pointer-events: none; }
+        .row.active { opacity: 1; pointer-events: auto; }
+        .cell { height: 45px; background: #2d2f34; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; border: 1px solid #3d3f46; color: rgba(255,255,255,0.1); }
+        .cell.clicked { background: #3b82f6; color: white; border-color: #60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.5); }
+        .cell.bomb { background: #ef4444; color: white; }
+
+        /* --- HISTORY --- */
+        .history-bar { width: 100%; display: flex; gap: 8px; overflow-x: auto; padding: 10px; background: #1a1b1e; border-top: 1px solid #2d2f34; box-sizing: border-box; }
+        .hist-item { min-width: 70px; background: #2d2f34; padding: 6px; border-radius: 8px; text-align: center; font-size: 11px; color: #94a3b8; }
+        .hist-item b { display: block; color: white; font-size: 12px; }
+
+        /* --- CONTROLS (Responsive Fix) --- */
+        .controls { width: 100%; background: #1a1b1e; padding: 15px; border-top: 1px solid #2d2f34; box-sizing: border-box; }
+        .bet-box-container { display: flex; gap: 10px; align-items: stretch; margin-bottom: 12px; }
+        .input-area { flex: 1; background: #2d2f34; border-radius: 10px; padding: 8px; }
+        .input-label { font-size: 10px; color: #94a3b8; margin-bottom: 4px; }
+        .input-row { display: flex; align-items: center; justify-content: space-between; }
+        .input-row input { background: transparent; border: none; color: white; font-size: 18px; font-weight: bold; width: 50%; outline: none; }
+        
+        /* Amount +/- Spacing Fix */
+        .adj-btns { display: flex; gap: 20px; color: #94a3b8; font-size: 22px; cursor: pointer; padding-right: 5px; }
+
+        .bet-btn { flex: 1.2; background: #3b82f6; border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 18px; box-shadow: 0 4px 0 #2563eb; }
+        
+        /* Mode Buttons Responsive Fix */
+        .mode-strip { display: flex; gap: 8px; justify-content: space-between; }
+        .m-btn { flex: 1; background: #2d2f34; border: 1px solid #3d3f46; color: #94a3b8; padding: 10px 5px; border-radius: 8px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+        .m-btn.active { border-color: #ffcc00; color: #ffcc00; background: rgba(255,204,0,0.1); }
+    </style>
+</head>
+<body>
+
+<div id="loadingPage">
+    <h1 class="load-logo-yr">Y---R</h1>
+    <h2 class="load-logo-kpk">KPK WIN</h2>
+    <div style="color: rgba(255,255,255,0.8); font-size: 35px; font-weight: 900; margin-top: 15px;">MINES</div>
+    <div class="load-bar-container"><div id="loadProgress"></div></div>
+    <div id="loadPercent" style="color: #ffffff; font-size: 12px; margin-top: 8px; opacity: 0.6;">0%</div>
+</div>
+
+<header>
+    <div class="brand-title">KPK <span>WIN</span> × MINES</div>
+    <div class="balance-display"><span id="userBal">0.00</span> PKR</div>
+</header>
+
+<div class="game-area-wrapper">
+    <div class="top-stats">
+        <div class="stat-box" style="color:#3b82f6;">⭐ <span id="starCount">1</span></div>
+        <div class="stat-box" style="color:#ef4444;">💣 <span id="bombCount">2</span></div>
+    </div>
+    <div class="scroll-container" id="scrollBox">
+        <div class="game-container" id="board"></div>
+    </div>
+    <div class="history-bar" id="historyBar"></div>
+    <div class="controls">
+        <div class="bet-box-container">
+            <div class="input-area">
+                <div class="input-label">Amount</div>
+                <div class="input-row">
+                    <input type="number" id="betAmount" value="50">
+                    <div class="adj-btns">
+                        <span onclick="adjustBet(-10)">−</span>
+                        <span onclick="adjustBet(10)">+</span>
+                    </div>
+                </div>
+            </div>
+            <button id="startBtn" class="bet-btn" onclick="startGame()">Bet ⭐</button>
+            <button id="cashBtn" class="bet-btn" style="background:#10b981; box-shadow: 0 4px 0 #059669; display:none;" onclick="cashout()">Cash Out</button>
+        </div>
+        <div class="mode-strip">
+            <button class="m-btn active" id="btn-easy" onclick="setMode('easy')">EASY</button>
+            <button class="m-btn" id="btn-normal" onclick="setMode('normal')">NORMAL</button>
+            <button class="m-btn" id="btn-strong" onclick="setMode('strong')">STRONG</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- LOADING LOGIC ---
+    window.onload = () => {
+        let p = 0;
+        let iv = setInterval(() => {
+            p += Math.random() * 8;
+            if(p >= 100) { p=100; clearInterval(iv); 
+                setTimeout(() => { document.getElementById('loadingPage').style.opacity='0'; 
+                setTimeout(()=> document.getElementById('loadingPage').style.display='none', 500)}, 400); 
+            }
+            document.getElementById('loadProgress').style.width = p+'%';
+            document.getElementById('loadPercent').innerText = Math.floor(p)+'%';
+        }, 50);
+    };
+
+    const firebaseConfig = { apiKey: "AIzaSyCYzGgpU8OBX2rQXkqVrafgtfMK896zJtA", databaseURL: "https://kpk-win-default-rtdb.firebaseio.com", projectId: "kpk-win" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentUser = sessionStorage.getItem('currentUserId') || localStorage.getItem('activeUser');
+    let userBalance = 0; let currentLvl = 0; let currentMode = 'easy';
+    const totalRows = 30;
+
+    const config = {
+        easy: { start: 1.0, end: 10.0, bombProb: 0.90 },
+        normal: { start: 1.5, end: 15.0, bombProb: 0.90 },
+        strong: { start: 1.3, end: 30.0, bombProb: 0.90 }
+    };
+
+    function getMult(lvl) {
+        let conf = config[currentMode];
+        return (conf.start + (lvl * (conf.end - conf.start) / 29)).toFixed(2);
+    }
+
+    if(currentUser) {
+        db.ref('users/' + currentUser + '/balance').on('value', snap => {
+            userBalance = parseFloat(snap.val() || 0);
+            document.getElementById('userBal').innerText = userBalance.toLocaleString();
+        });
+    }
+
+    function setMode(m) {
+        currentMode = m;
+        document.querySelectorAll('.m-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + m).classList.add('active');
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const bar = document.getElementById('historyBar');
+        bar.innerHTML = '';
+        for(let i=0; i<6; i++) bar.innerHTML += `<div class="hist-item">${i+1} ⭐ <b>x${getMult(i)}</b></div>`;
+    }
+
+    const board = document.getElementById('board');
+    for (let i = 0; i < totalRows; i++) {
+        let row = document.createElement('div'); row.className = 'row'; row.id = 'r-' + i;
+        for (let j = 0; j < 3; j++) {
+            let cell = document.createElement('div'); cell.className = 'cell';
+            cell.innerHTML = `<span>${i+1}</span>`;
+            cell.onclick = () => step(i, j);
+            row.appendChild(cell);
+        }
+        board.appendChild(row);
+    }
+
+    function startGame() {
+        let bet = parseFloat(document.getElementById('betAmount').value);
+        if (userBalance < bet || bet < 10) return alert("Check Balance!");
+        db.ref('users/' + currentUser + '/balance').transaction(b => b - bet);
+        currentLvl = 0;
+        document.querySelectorAll('.cell').forEach(c => { c.classList.remove('clicked', 'bomb'); c.innerText = c.parentElement.id.split('-')[1]*1+1; });
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('cashBtn').style.display = 'block';
+        activate(0);
+    }
+
+    function activate(l) {
+        document.querySelectorAll('.row').forEach(r => r.classList.remove('active'));
+        if (l < totalRows) {
+            let target = document.getElementById('r-' + l);
+            target.classList.add('active');
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function step(r, c) {
+        if (r !== currentLvl) return;
+        let isBomb = Math.random() < config[currentMode].bombProb;
+        let cells = document.getElementById('r-' + r).children;
+        if (isBomb) {
+            cells[c].classList.add('bomb'); cells[c].innerText = '💣';
+            setTimeout(() => { alert("Blast!"); reset(); }, 300);
+        } else {
+            cells[c].classList.add('clicked'); cells[c].innerText = '⭐';
+            currentLvl++;
+            let win = document.getElementById('betAmount').value * getMult(r);
+            document.getElementById('cashBtn').innerText = "Cash Out Rs " + Math.floor(win);
+            if (currentLvl === totalRows) cashout(); else activate(currentLvl);
+        }
+    }
+
+    function cashout() {
+        let win = document.getElementById('betAmount').value * getMult(currentLvl - 1);
+        db.ref('users/' + currentUser + '/balance').transaction(b => b + win);
+        alert("Won: Rs " + win.toFixed(2)); reset();
+    }
+
+    function reset() {
+        document.getElementById('startBtn').style.display = 'block';
+        document.getElementById('cashBtn').style.display = 'none';
+        document.querySelectorAll('.row').forEach(r => r.classList.remove('active'));
+        document.getElementById('scrollBox').scrollTo({top: board.scrollHeight});
+    }
+
+    function adjustBet(v) {
+        let b = document.getElementById('betAmount');
+        b.value = Math.max(10, parseInt(b.value) + v);
+    }
+
+    renderHistory();
+</script>
+</body>
+</html>
