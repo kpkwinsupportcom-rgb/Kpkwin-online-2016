@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KPK-WIN-BOM BLOST GAME | Tower Blast</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            margin: 0; background: #1a1b1e; color: white; 
+            font-family: 'Inter', sans-serif; display: flex; 
+            flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; 
+        }
+
+        /* --- LOADING PAGE (WAPAS ADDED) --- */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('unnamed (1).webp?v=2'); 
+            background-size: cover; background-position: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 2000; transition: opacity 0.5s ease;
+        }
+        .loading-bar-bg { width: 70%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-top: 20px; overflow: hidden; }
+        .loading-bar-fill { width: 0%; height: 100%; background: #3b82f6; transition: width 0.1s; }
+
+        /* --- HEADER --- */
+        header { 
+            position: sticky; top: 0; z-index: 1000;
+            height: 55px; width: 100%; padding: 0 15px; background: #1a1b1e; 
+            display: flex; align-items: center; 
+            border-bottom: 1px solid #2d2f34;
+        }
+        .exit-btn {
+            background: #2d2f34; color: #ff4d4d; border: 1px solid #3d3f46;
+            width: 35px; height: 35px; border-radius: 8px; font-weight: 900;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; margin-right: 12px; font-size: 18px;
+        }
+        .balance-box { 
+            margin-left: auto;
+            background: #2d2f34; padding: 6px 15px; border-radius: 8px; 
+            font-weight: bold; border: 1px solid #3d3f46; color: #ffcc00; 
+        }
+
+        /* --- MULTIPLIER BAR --- */
+        .multiplier-bar {
+            display: flex; gap: 10px; padding: 12px; background: #141518;
+            overflow-x: auto; border-bottom: 1px solid #2d2f34; white-space: nowrap;
+            scrollbar-width: none;
+        }
+        .multiplier-bar::-webkit-scrollbar { display: none; }
+        .m-item { background: #2d2f34; padding: 8px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; color: #ffcc00; border: 1px solid #3d3f46; }
+        .m-item.active-step { background: rgba(255, 204, 0, 0.2); border-color: #ffcc00; transform: scale(1.05); }
+
+        /* --- GAME AREA --- */
+        .game-area-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .mode-container { display: flex; gap: 8px; padding: 10px; }
+        .mode-btn { flex: 1; padding: 10px; background: #2d2f34; border: 1px solid #3d3f46; color: #94a3b8; border-radius: 8px; font-weight: 800; font-size: 12px; cursor: pointer; }
+        .mode-btn.active { border-color: #ffcc00; color: #ffcc00; background: rgba(255,204,0,0.1); }
+        .scroll-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column-reverse; align-items: center; padding: 20px 0 220px 0; scroll-behavior: smooth; }
+        .game-board { width: 90%; max-width: 360px; display: flex; flex-direction: column-reverse; gap: 12px; }
+        .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; opacity: 0.2; pointer-events: none; transition: 0.4s; }
+        .row.active { opacity: 1; pointer-events: auto; }
+        .cell { height: 60px; background: #2d2f34; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 1px solid #3d3f46; color: rgba(255,255,255,0.1); }
+        .cell.clicked { background: #3b82f6 !important; border-color: #60a5fa; color: white; }
+        .cell.bomb { background: #ef4444 !important; border-color: #f87171; color: white; font-size: 26px; }
+
+        /* --- CONTROLS --- */
+        .footer-controls { position: fixed; bottom: 0; left: 0; width: 100%; background: #1f2024; border-top: 2px solid #2d2f34; padding: 10px 15px 30px 15px; z-index: 1000; }
+        .quick-amounts { display: flex; gap: 8px; margin-bottom: 12px; }
+        .q-btn { flex: 1; background: #2d2f34; color: white; padding: 8px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .bet-container { display: flex; gap: 12px; height: 55px; }
+        .amount-input-box { flex: 1; background: #2d2f34; border-radius: 10px; padding: 5px 15px; border: 1px solid #3d3f46; }
+        .btn-main { flex: 1.2; border: none; border-radius: 10px; color: white; font-weight: 900; font-size: 18px; cursor: pointer; }
+        #startBtn { background: #3b82f6; box-shadow: 0 4px 0 #1d4ed8; }
+        #cashBtn { background: #10b981; box-shadow: 0 4px 0 #047857; }
+    </style>
+</head>
+<body>
+
+<div id="loading-screen">
+    <h1 style="color:#ff4d4d; margin:0;">BOMB BLAST</h1>
+    <h2 style="letter-spacing:8px; margin:5px 0;">Y---R</h2>
+    <div class="loading-bar-bg"><div class="loading-bar-fill" id="loadFill"></div></div>
+</div>
+
+<header>
+    <div class="exit-btn" onclick="window.location.href='home.html'">✖</div>
+    <div style="font-weight:900;">KPK <span style="color:#ffcc00; margin-left: 2px;">WIN</span></div>
+    <div class="balance-box">Rs <span id="userBal">0.00</span></div>
+</header>
+
+<div class="game-area-wrapper">
+    <div class="multiplier-bar" id="multBar"></div>
+    <div class="mode-container">
+        <button class="mode-btn active" id="m-easy" onclick="setMode('easy')">EASY</button>
+        <button class="mode-btn" id="m-normal" onclick="setMode('normal')">NORMAL</button>
+        <button class="mode-btn" id="m-strong" onclick="setMode('strong')">STRONG</button>
+    </div>
+    <div class="scroll-container" id="scrollBox"><div class="game-board" id="board"></div></div>
+    <div class="footer-controls">
+        <div class="quick-amounts">
+            <button class="q-btn" onclick="setBet(100)">100</button>
+            <button class="q-btn" onclick="setBet(500)">500</button>
+            <button class="q-btn" onclick="setBet(1000)">1000</button>
+            <button class="q-btn" onclick="setBet(2000)">2000</button>
+        </div>
+        <div class="bet-container">
+            <div class="amount-input-box">
+                <input type="number" id="betAmount" value="50" style="background:transparent; border:none; color:white; font-size:20px; font-weight:bold; width:100%; outline:none;">
+            </div>
+            <button id="startBtn" class="btn-main" onclick="startGame()">BET ⭐</button>
+            <button id="cashBtn" class="btn-main" style="display:none;" onclick="cashout()">CASHOUT</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const configs = {
+        easy: { start: 1.00, step: 0.31, prob: 0.30 },
+        normal: { start: 1.30, step: 0.48, prob: 0.45 },
+        strong: { start: 1.30, step: 0.99, prob: 0.60 }
+    };
+
+    let currentMode = 'easy', currentLvl = 0, balance = 0;
+    const currentUser = sessionStorage.getItem('currentUserId') || 'guest';
+
+    // Firebase
+    const firebaseConfig = { apiKey: "AIzaSyCYzGgpU8OBX2rQXkqVrafgtfMK896zJtA", databaseURL: "https://kpk-win-Bom-blost-game-default-rtdb.firebaseio.com", projectId: "kpk-win-Bom-Blost-Game" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    db.ref('users/' + currentUser + '/balance').on('value', snap => {
+        balance = parseFloat(snap.val() || 0);
+        document.getElementById('userBal').innerText = balance.toFixed(2);
+    });
+
+    // Loading Bar Logic (Aapka original)
+    let prg = 0;
+    const inv = setInterval(() => {
+        prg += 5; document.getElementById('loadFill').style.width = prg + '%';
+        if(prg >= 100) { clearInterval(inv); document.getElementById('loading-screen').style.opacity = '0'; setTimeout(()=>document.getElementById('loading-screen').style.display='none', 500); }
+    }, 100);
+
+    function setBet(amt) { document.getElementById('betAmount').value = amt; }
+
+    function updateMultipliers() {
+        const bar = document.getElementById('multBar'); bar.innerHTML = '';
+        let conf = configs[currentMode];
+        for(let i=0; i<30; i++) {
+            let val = (conf.start + (i * conf.step)).toFixed(2);
+            let div = document.createElement('div'); div.className = 'm-item'; div.id = 'step-' + i;
+            div.innerText = val + 'x ⭐'; bar.appendChild(div);
+        }
+    }
+
+    function setMode(m) {
+        if(document.getElementById('startBtn').style.display === 'none') return;
+        currentMode = m;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('m-' + m).classList.add('active');
+        updateMultipliers();
+    }
+
+    const board = document.getElementById('board');
+    for (let i = 0; i < 30; i++) {
+        let row = document.createElement('div'); row.className = 'row'; row.id = 'r-' + i;
+        for (let j = 0; j < 3; j++) {
+            let cell = document.createElement('div'); cell.className = 'cell';
+            cell.innerHTML = '★'; cell.onclick = () => step(i, j);
+            row.appendChild(cell);
+        }
+        board.appendChild(row);
+    }
+
+    function startGame() {
+        let amt = parseFloat(document.getElementById('betAmount').value);
+        if (balance < amt) return alert("Low Balance!");
+        db.ref('users/' + currentUser + '/balance').transaction(b => (b || 0) - amt);
+        currentLvl = 0;
+        document.querySelectorAll('.cell').forEach(c => { c.classList.remove('clicked', 'bomb'); c.innerHTML = '★'; });
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('cashBtn').style.display = 'block';
+        activateRow(0);
+    }
+
+    function activateRow(l) {
+        document.querySelectorAll('.row').forEach(r => r.classList.remove('active'));
+        if (l < 30) {
+            document.getElementById('r-' + l).classList.add('active');
+            document.getElementById('r-' + l).scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.querySelectorAll('.m-item').forEach(m => m.classList.remove('active-step'));
+            let stepElem = document.getElementById('step-' + l);
+            if(stepElem) { stepElem.classList.add('active-step'); stepElem.scrollIntoView({ behavior: 'smooth', inline: 'center' }); }
+        }
+    }
+
+    function step(r, c) {
+        if (r !== currentLvl) return;
+        let conf = configs[currentMode];
+        let cell = document.getElementById('r-' + r).children[c];
+        if (Math.random() < conf.prob) {
+            cell.classList.add('bomb'); cell.innerHTML = '💣';
+            setTimeout(() => { alert("BOOM!"); resetGame(); }, 300);
+        } else {
+            cell.classList.add('clicked'); cell.innerHTML = '✔';
+            currentLvl++;
+            let nextMult = (conf.start + ((currentLvl-1) * conf.step)).toFixed(2);
+            document.getElementById('cashBtn').innerText = "CASHOUT (" + nextMult + "x)";
+            activateRow(currentLvl);
+        }
+    }
+
+    function cashout() {
+        let conf = configs[currentMode];
+        let mult = (conf.start + ((currentLvl-1) * conf.step));
+        let win = parseFloat(document.getElementById('betAmount').value) * mult;
+        db.ref('users/' + currentUser + '/balance').transaction(b => (b || 0) + win);
+        resetGame();
+    }
+
+    function resetGame() {
+        document.getElementById('startBtn').style.display = 'block';
+        document.getElementById('cashBtn').style.display = 'none';
+        document.querySelectorAll('.row').forEach(r => r.classList.remove('active'));
+    }
+
+    updateMultipliers();
+</script>
+</body>
+</html>
