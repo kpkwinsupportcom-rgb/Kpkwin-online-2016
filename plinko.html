@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KPK-WIN | Plinko UFO Engine</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+
+    <style>
+        :root { 
+            --neon-gold: #ffcc00; 
+        }
+
+        body { 
+            margin: 0; background: #070b1a; color: white; 
+            font-family: 'Segoe UI', sans-serif; display: flex; 
+            flex-direction: column; align-items: center; overflow: hidden; 
+            touch-action: manipulation; 
+        }
+        
+        /* --- UPDATED LOADING SCREEN --- */
+        #loading-screen { 
+            position: fixed; inset: 0; 
+            background-color: #000000;
+            display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; z-index: 9999; transition: 0.8s;
+        }
+
+        .loader-content { text-align: center; }
+        
+        .kpk-title { font-size: 22px; color: white; margin-bottom: 5px; letter-spacing: 2px; }
+        
+        .main-title-glow { 
+            font-size: 65px; 
+            font-weight: 900; 
+            color: var(--neon-gold); 
+            text-shadow: 0 0 25px rgba(255, 204, 0, 0.8);
+            animation: textPulse 1.5s infinite ease-in-out;
+            margin: 0;
+        }
+
+        .Y---R-tag { 
+            font-size: 18px; color: var(--neon-gold); letter-spacing: 8px; 
+            margin: 10px 0 25px 0; font-weight: bold; 
+            text-shadow: 0 0 10px var(--neon-gold);
+        }
+
+        @keyframes textPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.08); opacity: 0.8; }
+        }
+
+        .load-bar-container { 
+            width: 250px; height: 4px; 
+            background: rgba(255, 255, 255, 0.1); border-radius: 10px; 
+            overflow: hidden;
+        }
+
+        .load-fill { 
+            width: 0%; height: 100%; background: var(--neon-gold); 
+            box-shadow: 0 0 15px var(--neon-gold); 
+        }
+
+        /* --- MULTIPLIER MOVEMENT --- */
+        .m-box { 
+            height: 24px; display: flex; align-items: center; justify-content: center; 
+            font-size: 9px; font-weight: bold; border-radius: 4px; color: #fff; 
+            transition: all 0.2s ease;
+        }
+
+        /* Gold box shimmer effect */
+        .gold-shimmer {
+            animation: goldGlow 2s infinite alternate;
+        }
+
+        @keyframes goldGlow {
+            from { box-shadow: 0 0 2px var(--neon-gold); filter: brightness(1); }
+            to { box-shadow: 0 0 12px var(--neon-gold); filter: brightness(1.4); }
+        }
+
+        /* --- REST OF THE UI (Same as original) --- */
+        header { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: rgba(15, 28, 24, 0.95); border-bottom: 2px solid var(--neon-gold); z-index: 1000; box-sizing: border-box; }
+        .balance-box { background: rgba(255, 204, 0, 0.1); padding: 6px 15px; border-radius: 8px; border: 1.5px solid var(--neon-gold); font-weight: 800; color: var(--neon-gold); font-size: 16px; }
+        .mode-row { display: flex; gap: 5px; width: 95%; margin: 10px 0; }
+        .mode-btn { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #111; color: #888; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+        .mode-btn.active { border-color: var(--neon-gold); color: var(--neon-gold); background: rgba(255,204,0,0.1); }
+        #game-area { position: relative; width: 100%; max-width: 360px; height: 320px; }
+        .ufo-vessel { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 70px; height: 35px; z-index: 10; background: url('https://img.icons8.com/plasticine/100/ufo.png') no-repeat center/contain; }
+        .mult-container { width: 95%; margin-top: 5px; z-index: 5; }
+        .mult-row { display: grid; grid-template-columns: repeat(9, 1fr); gap: 3px; }
+        .box-light { transform: scale(1.2); box-shadow: 0 0 15px white; filter: brightness(1.5); border: 1px solid #fff; }
+        .controls { width: 100%; background: #0f1c18; padding: 15px; border-radius: 25px 25px 0 0; margin-top: auto; }
+        .bet-display { background: #000; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-radius: 12px; border: 1px solid #444; margin-bottom: 15px; }
+        #manualBet { background: transparent; border: none; color: var(--neon-gold); font-size: 22px; font-weight: 900; width: 80px; text-align: center; outline: none; }
+        #win-toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: var(--neon-gold); padding: 15px 35px; border-radius: 15px; font-size: 26px; font-weight: 900; display: none; border: 3px solid var(--neon-gold); z-index: 10000; }
+        #history-panel { position: fixed; top: 0; right: -100%; width: 90%; height: 100%; background: #0f1c18; border-left: 2px solid var(--neon-gold); z-index: 10001; transition: 0.4s; display: flex; flex-direction: column; }
+        .hist-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #333; }
+        .hist-close { font-size: 26px; color: #ff4444; background: none; border: none; font-weight: bold; }
+        #history-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .history-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #163026; font-size: 13px; }
+    </style>
+</head>
+<body onload="initGame()">
+
+    <!-- UPDATED LOADING SCREEN HTML -->
+    <div id="loading-screen">
+        <div class="loader-content">
+            <div class="kpk-title">KPK WIN</div>
+            <div class="main-title-glow">PLINKO</div>
+            <div class="Y---R-tag">Y---R</div>
+            <div class="load-bar-container">
+                <div class="load-fill" id="loadFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="history-panel">
+        <div class="hist-header">
+            <span style="color:var(--neon-gold); font-weight:bold; font-size:18px;">BET HISTORY</span>
+            <button class="hist-close" onclick="toggleHistory(false)">X</button>
+        </div>
+        <div id="history-list"></div>
+    </div>
+
+    <header>
+        <button style="background:none; border:1px solid #ff4444; color:#ff4444; padding:6px 12px; border-radius:6px;" onclick="window.location.href='index.html'">EXIT</button>
+        <button style="background:var(--neon-gold); color:black; border:none; padding:6px 12px; border-radius:6px; font-weight:900;" onclick="toggleHistory(true)">HISTORY</button>
+        <div class="balance-box">Rs <span id="userBal">0.00</span></div>
+    </header>
+
+    <div class="mode-row">
+        <button class="mode-btn active" id="btn-easy" onclick="setRisk('easy')">EASY</button>
+        <button class="mode-btn" id="btn-norm" onclick="setRisk('norm')">NORMAL</button>
+        <button class="mode-btn" id="btn-strong" onclick="setRisk('strong')">STRONG</button>
+    </div>
+
+    <div id="game-area">
+        <div class="ufo-vessel"></div>
+        <div id="plinko-canvas"></div>
+    </div>
+
+    <div class="mult-container"><div class="mult-row" id="multiplier-row"></div></div>
+    <div id="win-toast">WIN!</div>
+
+    <div class="controls">
+        <div class="bet-display">
+            <button style="color:var(--neon-gold); font-size:20px; background:none; border:none;" onclick="adjustBet(0.5)">½</button>
+            <input type="number" id="manualBet" value="30" onchange="validateBet()">
+            <button style="color:var(--neon-gold); font-size:20px; background:none; border:none;" onclick="adjustBet(2)">2x</button>
+        </div>
+        <button style="width:100%; background:#00c853; padding:16px; border-radius:12px; border:none; color:white; font-weight:900; font-size:18px;" onclick="dropBall()">PLAY NOW</button>
+    </div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyCYzGgpU8OBX2rQXkqVrafgtfMK896zJtA", databaseURL: "https://kpk-win-default-rtdb.firebaseio.com" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let currentUserId = sessionStorage.getItem("currentUserId");
+    if (!currentUserId) { window.location.href = 'index.html'; }
+
+    let userBalance = 0, currentRisk = 'easy';
+    const { Engine, Render, Runner, Bodies, Composite, Events } = Matter;
+    const engine = Engine.create();
+    const world = engine.world;
+
+    const riskLevels = {
+        easy:   [2.0, 1.4, 1.1, 0.5, 0.2, 0.5, 1.1, 1.4, 2.0],
+        norm:   [5.0, 2.2, 1.2, 0.3, 0.1, 0.3, 1.2, 2.2, 5.0],
+        strong: [10.0, 4.0, 1.5, 0.2, 0.0, 0.2, 1.5, 4.0, 10.0]
+    };
+
+    function initGame() {
+        db.ref('users/' + currentUserId + '/balance').on('value', (s) => {
+            if(s.exists()) { userBalance = parseFloat(s.val()); document.getElementById('userBal').innerText = userBalance.toFixed(2); }
+        });
+
+        renderMultipliers();
+        const render = Render.create({ element: document.getElementById('plinko-canvas'), engine: engine, options: { width: 360, height: 320, wireframes: false, background: 'transparent' } });
+
+        // Pins generation
+        for (let r = 0; r < 9; r++) {
+            const pins = r + 3;
+            for (let i = 0; i < pins; i++) {
+                const x = 180 + (i - (pins - 1) / 2) * 32;
+                const y = 55 + (r * 28);
+                const pin = Bodies.circle(x, y, 3.5, { isStatic: true, restitution: 0.5, label: 'pin', render: { fillStyle: '#ffffff22' } });
+                Composite.add(world, pin);
+            }
+        }
+
+        Events.on(engine, 'collisionStart', (event) => {
+            event.pairs.forEach((pair) => {
+                if (pair.bodyA.label === 'pin') highlightPin(pair.bodyA);
+                if (pair.bodyB.label === 'pin') highlightPin(pair.bodyB);
+            });
+        });
+
+        Render.run(render); Runner.run(Runner.create(), engine);
+
+        // Loading bar logic
+        let prg = 0;
+        let t = setInterval(() => {
+            prg += 2;
+            document.getElementById('loadFill').style.width = prg + '%';
+            if(prg >= 100) { 
+                clearInterval(t); 
+                document.getElementById('loading-screen').style.opacity = '0'; 
+                setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 800); 
+            }
+        }, 40);
+    }
+
+    function highlightPin(body) {
+        body.render.fillStyle = '#ffcc00';
+        setTimeout(() => body.render.fillStyle = '#ffffff22', 150);
+    }
+
+    function setRisk(mode) {
+        currentRisk = mode;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + mode).classList.add('active');
+        renderMultipliers();
+    }
+
+    function renderMultipliers() {
+        const row = document.getElementById('multiplier-row');
+        row.innerHTML = '';
+        riskLevels[currentRisk].forEach((m, i) => {
+            const div = document.createElement('div');
+            div.className = 'm-box'; 
+            div.id = `box-${i}`;
+            
+            if(m >= 1) {
+                div.classList.add('gold-shimmer');
+                div.style.backgroundColor = '#ffcc00';
+                div.style.color = 'black';
+            } else {
+                div.style.backgroundColor = '#333';
+                div.style.color = 'white';
+            }
+            
+            div.innerText = m + 'x';
+            row.appendChild(div);
+        });
+    }
+
+    function toggleHistory(show) { document.getElementById('history-panel').style.right = show ? '0' : '-100%'; }
+    function validateBet() { let val = Math.floor(document.getElementById('manualBet').value); if(val < 10) val = 10; document.getElementById('manualBet').value = val; }
+    function adjustBet(m) { let v = parseInt(document.getElementById('manualBet').value); document.getElementById('manualBet').value = Math.floor(v * m); validateBet(); }
+
+    function dropBall() {
+        const bet = parseInt(document.getElementById('manualBet').value);
+        if (userBalance < bet) { alert("Balance kam hai!"); return; }
+        db.ref('users/' + currentUserId + '/balance').transaction((b) => (b || 0) - bet);
+
+        let adminMode = Math.random() < 0.8; 
+        let startX = 180 + (adminMode ? (Math.random() - 0.5) * 6 : (Math.random() - 0.5) * 45);
+
+        const ball = Bodies.circle(startX, 15, 7, { restitution: 0.6, frictionAir: 0.045, label: 'ball', render: { fillStyle: '#ffcc00' } });
+        Composite.add(world, ball);
+
+        const checkEnd = setInterval(() => {
+            if (ball.position.y > 300) {
+                clearInterval(checkEnd);
+                let col = Math.floor((ball.position.x / 360) * 9);
+                col = Math.max(0, Math.min(col, 8));
+                
+                const targetBox = document.getElementById(`box-${col}`);
+                if(targetBox) { targetBox.classList.add('box-light'); setTimeout(() => targetBox.classList.remove('box-light'), 800); }
+                
+                const winMult = riskLevels[currentRisk][col];
+                const winAmt = bet * winMult;
+                
+                if(winAmt > 0) {
+                    const toast = document.getElementById('win-toast'); toast.innerText = "WIN: Rs " + winAmt.toFixed(2); toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 1000);
+                    db.ref('users/' + currentUserId + '/balance').transaction((b) => (b || 0) + winAmt);
+                }
+                
+                const item = document.createElement('div'); item.className = 'history-item';
+                item.innerHTML = `<span>Rs ${bet}</span><span>${winMult}x</span><span style="color:${winAmt >= bet ? '#00ff88' : '#ff4444'}">Rs ${winAmt.toFixed(2)}</span>`;
+                document.getElementById('history-list').prepend(item);
+                
+                Composite.remove(world, ball);
+            }
+        }, 40);
+    }
+</script>
+</body>
+</html>
